@@ -25,18 +25,29 @@ if (serverMode) {
 
     ws = ws_;
 
-    sendEvent({
-      type: 'stateChange',
-      state: noble.state
-    });
-
     ws.on('message', onMessage);
 
     ws.on('close', function() {
       console.log('ws -> close');
-
       noble.stopScanning();
     });
+
+    noble.on('stateChange', function(state) {
+      sendEvent({
+        type: 'stateChange',
+        state: state
+      });
+    });
+
+    // Send poweredOn if already in this state.
+    if (noble.state == "poweredOn") {
+      sendEvent({
+        type: 'stateChange',
+        state: "poweredOn"
+      });
+    }
+
+
   });
 } else {
   ws = new WebSocket('ws://' + host + ':' + port);
@@ -76,7 +87,7 @@ var onMessage = function(message) {
   console.log('ws -> message: ' + message);
 
   var command = JSON.parse(message);
-  
+
   var action = command.action;
   var peripheralUuid = command.peripheralUuid;
   var serviceUuids = command.serviceUuids;
@@ -216,7 +227,7 @@ noble.on('discover', function(peripheral) {
         includedServiceUuids: includedServiceUuids
       });
     };
-    
+
     var characteristicsDiscover = function(characteristics) {
       var service = this;
       var discoveredCharacteristics = [];
@@ -233,7 +244,7 @@ noble.on('discover', function(peripheral) {
           isNotification: isNotification
         });
       };
-      
+
       var write = function() {
         var characteristic = this;
 
@@ -244,7 +255,7 @@ noble.on('discover', function(peripheral) {
           characteristicUuid: characteristic.uuid
         });
       };
-      
+
       var broadcast = function(state) {
         var characteristic = this;
 
@@ -256,7 +267,7 @@ noble.on('discover', function(peripheral) {
           state: state
         });
       };
-      
+
       var notify = function(state) {
         var characteristic = this;
 
@@ -268,7 +279,7 @@ noble.on('discover', function(peripheral) {
           state: state
         });
       };
-      
+
       var descriptorsDiscover = function(descriptors) {
         var characteristic = this;
 
@@ -286,7 +297,7 @@ noble.on('discover', function(peripheral) {
             data: data.toString('hex')
           });
         };
-        
+
         var valueWrite = function(data) {
           var descriptor = this;
 
@@ -372,7 +383,7 @@ noble.on('discover', function(peripheral) {
       handle: handle
     });
   });
-  
+
   peripheral.on('handleNotify', function(handle, data) {
     sendEvent({
       type: 'handleNotify',
@@ -387,6 +398,7 @@ noble.on('discover', function(peripheral) {
     peripheralUuid: peripheral.uuid,
     address: peripheral.address,
     addressType: peripheral.addressType,
+    connectable: peripheral.connectable,
     advertisement: {
       localName: peripheral.advertisement.localName,
       txPowerLevel: peripheral.advertisement.txPowerLevel,

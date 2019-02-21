@@ -1,7 +1,7 @@
 var async = require('async');
 var noble = require('../index');
 
-var peripheralUuid = process.argv[2];
+var peripheralIdOrAddress = process.argv[2].toLowerCase();
 
 noble.on('stateChange', function(state) {
   if (state === 'poweredOn') {
@@ -12,10 +12,10 @@ noble.on('stateChange', function(state) {
 });
 
 noble.on('discover', function(peripheral) {
-  if (peripheral.uuid === peripheralUuid) {
+  if (peripheral.id === peripheralIdOrAddress || peripheral.address === peripheralIdOrAddress) {
     noble.stopScanning();
 
-    console.log('peripheral with UUID ' + peripheralUuid + ' found');
+    console.log('peripheral with ID ' + peripheral.id + ' found');
     var advertisement = peripheral.advertisement;
 
     var localName = advertisement.localName;
@@ -37,10 +37,10 @@ noble.on('discover', function(peripheral) {
     }
 
     if (serviceData) {
-      console.log('  Service Data      = ' + serviceData);
+      console.log('  Service Data      = ' + JSON.stringify(serviceData, null, 2));
     }
 
-    if (localName) {
+    if (serviceUuids) {
       console.log('  Service UUIDs     = ' + serviceUuids);
     }
 
@@ -95,7 +95,11 @@ function explore(peripheral) {
                       async.detect(
                         descriptors,
                         function(descriptor, callback) {
-                          return callback(descriptor.uuid === '2901');
+                          if (descriptor.uuid === '2901') {
+                            return callback(descriptor);
+                          } else {
+                            return callback();
+                          }
                         },
                         function(userDescriptionDescriptor){
                           if (userDescriptionDescriptor) {
